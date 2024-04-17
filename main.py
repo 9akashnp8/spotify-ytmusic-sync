@@ -1,9 +1,11 @@
 import requests
 from typing import List
 from decouple import config
+from ytmusicapi import YTMusic
 
 from models import UserLikedTracks
 
+ytmusic = YTMusic("oauth.json")
 CLIENT_ID = config("CLIENT_ID")
 CLIENT_SECRET = config("CLIENT_SECRET")
 
@@ -25,7 +27,16 @@ def get_user_liked_tracks(playlist_id: str) -> List[UserLikedTracks]:
     if response.ok:
         data = response.json()
         tracks = data["tracks"]["items"]
-        tracks = [{"name": item["track"]["name"], "artist": item["track"]["artists"][0]["name"]} for item in tracks]
+        tracks = [UserLikedTracks(name=item["track"]["name"], artist=item["track"]["artists"][0]["name"]) for item in tracks]
         return tracks
 
-print(get_user_liked_tracks("37i9dQZEVXcO9m01hH7fa7"))
+
+def like_songs(songs: List[UserLikedTracks]) -> None:
+    for song in songs:
+        song_from_yt = ytmusic.search(song.name)
+        if song_from_yt[0]["category"] == "song":
+            song_id, song_name = song_from_yt[0]["videoId"], song_from_yt[0]["title"]
+            print(song_id, song_id)
+        # ytmusic.rate_song(song_id, "LIKE")
+
+print(like_songs(get_user_liked_tracks("6ITWYIfjMptEQMhmUp5Wsk")))
