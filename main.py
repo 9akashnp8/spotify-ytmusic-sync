@@ -1,4 +1,5 @@
 import requests
+import logging
 from typing import List
 from decouple import config
 from ytmusicapi import YTMusic
@@ -6,6 +7,8 @@ from fastapi import FastAPI
 
 from models import UserLikedTracks
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 ytmusic = YTMusic("oauth.json")
 CLIENT_ID = config("CLIENT_ID")
 CLIENT_SECRET = config("CLIENT_SECRET")
@@ -32,6 +35,10 @@ def get_playlist_songs(playlist_id: str) -> List[UserLikedTracks]:
         tracks = data["tracks"]["items"]
         tracks = [UserLikedTracks(name=item["track"]["name"], artist=item["track"]["artists"][0]["name"]) for item in tracks]
         return tracks
+    else:
+        logger.error(f"""
+            Something went wrong when fetching soptify playlist songs: {response.text}
+        """)
 
 
 def like_songs(songs: List[UserLikedTracks]) -> None:
