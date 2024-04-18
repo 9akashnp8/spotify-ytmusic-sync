@@ -4,6 +4,10 @@ from typing import List
 from decouple import config
 from ytmusicapi import YTMusic
 from fastapi import FastAPI
+from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Cookie
+from typing import Optional
 
 from models import UserLikedTracks
 
@@ -14,6 +18,18 @@ CLIENT_ID = config("CLIENT_ID")
 CLIENT_SECRET = config("CLIENT_SECRET")
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "HEAD", "OPTIONS"],
+    allow_headers=[
+        "Access-Control-Allow-Headers",
+        "Content-Type",
+        "Authorization",
+        "Access-Control-Allow-Origin",
+        "Set-Cookie"
+    ],
+)
 
 def get_access_token() -> str:
     headers = {
@@ -27,8 +43,8 @@ def get_access_token() -> str:
         access_token = data.get("access_token", "")
         return access_token
 
-def get_playlist_songs(playlist_id: str) -> List[UserLikedTracks]:
-    headers = { "Authorization": f"Bearer {config('ACCESS_TOKEN')}" }
+def get_playlist_songs(playlist_id: str, access_token: str) -> List[UserLikedTracks]:
+    headers = { "Authorization": f"Bearer {access_token}" }
     response = requests.get(f"https://api.spotify.com/v1/playlists/{playlist_id}", headers=headers)
     if response.ok:
         data = response.json()
@@ -49,11 +65,23 @@ def like_songs(songs: List[UserLikedTracks]) -> None:
             print(song_id, song_id)
         # ytmusic.rate_song(song_id, "LIKE")
 
-print(like_songs(get_playlist_songs("6ITWYIfjMptEQMhmUp5Wsk")))
+@app.post("/auth/access-token")
+def generate_access_token(response: Response):
+    access_token = get_access_token()
+    response.set_cookie(
+        "access_token",
+        value=access_token,
+        httponly=True,
+        samesite="none",
+        max_age=1800,
+        expires=1800,
+    )
+    return {"status": "success"}
+
 
 @app.get("/spotify/playlists/{playlist_id}/songs")
-def get_spotify_playlist_songs(playlist_id: str):
-    songs = get_playlist_songs(playlist_id)
+def get_spotify_playlist_songs(playlist_id: str, access_token: Optional[str] = Cookie(None)):
+    songs = get_playlist_songs(playlist_id, access_token)
     return songs
 
 @app.post("/youtube-music/search")
