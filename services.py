@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from decouple import config
 from ytmusicapi import YTMusic
 
-from models import Song
+from models import SpotifySong, YTMusicSearchResult
 
 logger = logging.getLogger(__name__)
 ytmusic = YTMusic("oauth.json")
@@ -24,18 +24,18 @@ class SpotifyService():
             access_token = data.get("access_token", "")
             return access_token
 
-    def _extract_song_details(self, songs: List[Dict[str, Any]]) -> List[Song]:
+    def _extract_song_details(self, songs: List[Dict[str, Any]]) -> List[SpotifySong]:
         result = []
         for song in songs:
             song_id = song["track"]["id"]
             title = song["track"]["name"]
             artist = song["track"]["artists"][0]["name"]
             result.append(
-                Song(song_id=song_id, platform="spotify", name=title, artist=artist)
+                SpotifySong(song_id=song_id, name=title, artist=artist)
             )
         return result
             
-    def get_playlist_songs(self, playlist_id: str, access_token: str) -> List[Song]:
+    def get_playlist_songs(self, playlist_id: str, access_token: str) -> List[SpotifySong] | None:
         headers = { "Authorization": f"Bearer {access_token}" }
         response = requests.get(
             f"{self.API_BASE_URL}/playlists/{playlist_id}",
@@ -52,14 +52,14 @@ class SpotifyService():
             """)
 
 
-def yt_music_search_wrapper(song_name: str, artist: str) -> Song:
+def yt_music_search_wrapper(spotify_song_id: str, song_name: str, artist: str) -> YTMusicSearchResult:
     search_result = ytmusic.search(f"{song_name} - {artist}", "songs")
     song_id = search_result[0]["videoId"]
     name = search_result[0]["title"]
     artists = ",".join([artist["name"] for artist in search_result[0]["artists"]])
-    return Song(
-        song_id=song_id,
-        platform="ytmusic",
+    return YTMusicSearchResult(
+        source_song_id=spotify_song_id,
+        ytmusic_song_id=song_id,
         name=name,
         artist=artists,
     )

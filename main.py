@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Cookie
 from typing import Optional
 
-from models import Song
+from models import YTMusicSearchResult, SpotifySong
 from services import SpotifyService, yt_music_search_wrapper
 
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +30,7 @@ app.add_middleware(
     ],
 )
 
-def like_songs(songs: List[Song]) -> None:
+def like_songs(songs: List[SpotifySong]) -> None:
     for song in songs:
         song_from_yt = ytmusic.search(song.name)
         if song_from_yt[0]["category"] == "song":
@@ -59,8 +59,8 @@ def get_spotify_playlist_songs(playlist_id: str, access_token: Optional[str] = C
 
 
 @app.post("/youtube-music/search")
-async def search_youtube_music(payload: List[Song]):
+async def search_youtube_music(payload: List[SpotifySong]) -> List[YTMusicSearchResult]:
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_results = [executor.submit(yt_music_search_wrapper, song.name, song.artist) for song in payload]
+        future_results = [executor.submit(yt_music_search_wrapper, song.song_id, song.name, song.artist) for song in payload]
         results = [future.result() for future in future_results]
         return results
