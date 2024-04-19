@@ -1,4 +1,4 @@
-import requests
+import concurrent.futures
 import logging
 from typing import List
 from ytmusicapi import YTMusic
@@ -9,7 +9,7 @@ from fastapi import Cookie
 from typing import Optional
 
 from models import Song
-from services import SpotifyService
+from services import SpotifyService, yt_music_search_wrapper
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,17 +57,10 @@ def get_spotify_playlist_songs(playlist_id: str, access_token: Optional[str] = C
     songs = spotify_service.get_playlist_songs(playlist_id, access_token)
     return songs
 
+
 @app.post("/youtube-music/search")
-def search_youtube_music(payload: List[Song]):
-    result = []
-    for song in payload:
-        yt_result = ytmusic.search(f"{song.name} - {song.artist}", "songs")
-        name = yt_result[0]["title"]
-        artists = ",".join([artist["name"] for artist in yt_result[0]["artists"]])
-        if (song.name in name or name in song.name) and (song.artist in artists or artists in song.artist):
-            match = 1
-        else:
-            match = 0
-        song_id = yt_result[0]["videoId"]
-        result.append(Song(song_id=song_id, platform="ytmusic", name=name, artist=artists))
-    return result
+async def search_youtube_music(payload: List[Song]):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_results = [executor.submit(yt_music_search_wrapper, song.name, song.artist) for song in payload]
+        results = [future.result() for future in future_results]
+        return results

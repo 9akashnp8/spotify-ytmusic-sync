@@ -2,10 +2,12 @@ import logging
 import requests
 from typing import List, Dict, Any
 from decouple import config
+from ytmusicapi import YTMusic
 
 from models import Song
 
 logger = logging.getLogger(__name__)
+ytmusic = YTMusic("oauth.json")
 
 class SpotifyService():
     CLIENT_ID = config("CLIENT_ID")
@@ -48,3 +50,16 @@ class SpotifyService():
             logger.error(f"""
                 Something went wrong when fetching soptify playlist songs: {response.text}
             """)
+
+
+def yt_music_search_wrapper(song_name: str, artist: str) -> Song:
+    search_result = ytmusic.search(f"{song_name} - {artist}", "songs")
+    song_id = search_result[0]["videoId"]
+    name = search_result[0]["title"]
+    artists = ",".join([artist["name"] for artist in search_result[0]["artists"]])
+    return Song(
+        song_id=song_id,
+        platform="ytmusic",
+        name=name,
+        artist=artists,
+    )
