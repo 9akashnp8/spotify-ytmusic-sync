@@ -62,18 +62,12 @@ def search_youtube_music(payload: List[Song]):
     result = []
     for song in payload:
         yt_result = ytmusic.search(f"{song.name} - {song.artist}", "songs")
-        title = yt_result[0]["title"]
+        name = yt_result[0]["title"]
         artists = ",".join([artist["name"] for artist in yt_result[0]["artists"]])
-        if (song.name in title or title in song.name) and (song.artist in artists or artists in song.artist):
+        if (song.name in name or name in song.name) and (song.artist in artists or artists in song.artist):
             match = 1
         else:
             match = 0
-        data = {
-            "videoId": yt_result[0]["videoId"],
-            "category": yt_result[0]["category"],
-            "title": title,
-            "artist": artists,
-            "match": match
-        }
-        result.append(data)
+        song_id = yt_result[0]["videoId"]
+        result.append(Song(song_id=song_id, platform="ytmusic", name=name, artist=artists))
     return result
