@@ -10,6 +10,7 @@ from typing import Optional
 
 from models import YTMusicSearchResult, SpotifySong
 from services import SpotifyService, yt_music_search_wrapper
+from utils import MOCK_SPOTIFY_PLAYLIST_SONGS, MOCK_YTMUSIC_SEARCH_RESULT
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,13 +54,17 @@ def generate_access_token(response: Response):
 
 
 @app.get("/spotify/playlists/{playlist_id}/songs")
-def get_spotify_playlist_songs(playlist_id: str, access_token: Optional[str] = Cookie(None)):
+def get_spotify_playlist_songs(playlist_id: str, mock: Optional[bool] = False, access_token: Optional[str] = Cookie(None)):
+    if mock:
+        return MOCK_SPOTIFY_PLAYLIST_SONGS
     songs = spotify_service.get_playlist_songs(playlist_id, access_token)
     return songs
 
 
 @app.post("/youtube-music/search")
-async def search_youtube_music(payload: List[SpotifySong]) -> List[YTMusicSearchResult]:
+async def search_youtube_music(payload: List[SpotifySong], mock: Optional[bool] = False) -> List[YTMusicSearchResult]:
+    if mock:
+        return MOCK_YTMUSIC_SEARCH_RESULT
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_results = [executor.submit(yt_music_search_wrapper, song.song_id, song.name, song.artist) for song in payload]
         results = [future.result() for future in future_results]
