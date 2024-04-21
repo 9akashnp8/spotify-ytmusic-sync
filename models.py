@@ -1,10 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator, Field
+from typing import Annotated, Optional, List
 
+PyObjectId = Annotated[str, BeforeValidator(str)]
 
 class SpotifySong(BaseModel):
-    song_id: str
-    name: str
-    artist: str
+    """
+    Spotify Song model
+    """
+    id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    song_id: str = Field(...)
+    name: str = Field(...)
+    artist: str = Field(...)
+    found: bool = Field(...)
+    liked: bool = Field(...)
+
+
+class SpotifyPlaylistCollection(BaseModel):
+    songs: List[SpotifySong]
 
 
 class YTMusicSearchResult(BaseModel):
@@ -12,3 +24,4 @@ class YTMusicSearchResult(BaseModel):
     ytmusic_song_id: str
     name: str
     artist: str
+

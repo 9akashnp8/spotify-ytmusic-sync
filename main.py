@@ -8,8 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Cookie
 from typing import Optional
 
-from models import YTMusicSearchResult, SpotifySong
-from services import SpotifyService, yt_music_search_wrapper
+from models import YTMusicSearchResult, SpotifySong, SpotifyPlaylistCollection
+from services import (
+    SpotifyService,
+    yt_music_search_wrapper,
+    get_or_create_collection,
+    get_docs_from_collection,
+)
 from utils import MOCK_SPOTIFY_PLAYLIST_SONGS, MOCK_YTMUSIC_SEARCH_RESULT
 
 logging.basicConfig(level=logging.INFO)
@@ -56,11 +61,20 @@ def generate_access_token(response: Response):
 
 
 @app.get("/spotify/playlists/{playlist_id}/songs")
-def get_spotify_playlist_songs(playlist_id: str, mock: Optional[bool] = False, access_token: Optional[str] = Cookie(None)):
+async def get_spotify_playlist_songs(
+    playlist_id: str,
+    mock: Optional[bool] = False,
+    access_token: Optional[str] = Cookie(None)
+):
     if mock:
         return MOCK_SPOTIFY_PLAYLIST_SONGS
-    songs = spotify_service.get_playlist_songs(playlist_id, access_token)
-    return songs
+    is_created, collection = await get_or_create_collection(playlist_id)
+    if is_created:
+        playlist_songs = spotify_service.get_playlist_songs(playlist_id, access_token)
+        collection.insert_many(playlist_songs)
+        return SpotifyPlaylistCollection(songs=playlist_songs)
+    documents = await get_docs_from_collection(collection)
+    return SpotifyPlaylistCollection(songs=documents)
 
 
 @app.post("/youtube-music/search")
