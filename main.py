@@ -20,6 +20,7 @@ spotify_service = SpotifyService()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "HEAD", "OPTIONS"],
     allow_headers=[
@@ -27,6 +28,7 @@ app.add_middleware(
         "Content-Type",
         "Authorization",
         "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Credentials",
         "Set-Cookie"
     ],
 )
@@ -46,7 +48,7 @@ def generate_access_token(response: Response):
         "access_token",
         value=access_token,
         httponly=True,
-        samesite="none",
+        samesite="lax",
         max_age=1800,
         expires=1800,
     )
