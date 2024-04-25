@@ -1,26 +1,26 @@
-import concurrent.futures
 import logging
 from typing import List
-from ytmusicapi import YTMusic
 from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Cookie
 from typing import Optional
+from queue import Queue
+from fastapi.websockets import WebSocket
 
-from models import YTMusicSearchResult, SpotifySong, SpotifyPlaylistCollection
+from models import SpotifyPlaylistCollection, YTMusicSearchPayload
 from services import (
     SpotifyService,
     yt_music_search_wrapper,
     get_or_create_collection,
     get_docs_from_collection,
+    yt_music_like_wrapper,
 )
 from utils import MOCK_SPOTIFY_PLAYLIST_SONGS, MOCK_YTMUSIC_SEARCH_RESULT
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-ytmusic = YTMusic("oauth.json")
 spotify_service = SpotifyService()
+queue = Queue()
 
 app = FastAPI()
 app.add_middleware(
@@ -37,14 +37,6 @@ app.add_middleware(
         "Set-Cookie"
     ],
 )
-
-def like_songs(songs: List[SpotifySong]) -> None:
-    for song in songs:
-        song_from_yt = ytmusic.search(song.name)
-        if song_from_yt[0]["category"] == "song":
-            song_id, song_name = song_from_yt[0]["videoId"], song_from_yt[0]["title"]
-            print(song_id, song_id)
-        # ytmusic.rate_song(song_id, "LIKE")
 
 @app.post("/auth/access-token")
 def generate_access_token(response: Response):
@@ -77,11 +69,35 @@ async def get_spotify_playlist_songs(
     return SpotifyPlaylistCollection(songs=documents)
 
 
-@app.post("/youtube-music/search")
-async def search_youtube_music(payload: List[SpotifySong], mock: Optional[bool] = False) -> List[YTMusicSearchResult]:
+@app.websocket("/sync")
+async def spotify_yt_music_sync(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        song: YTMusicSearchPayload = queue.get()
+        if song:
+            song_from_yt_music = yt_music_search_wrapper(song.song_id, song.name, song.artist)
+            await websocket.send_json({f"{song.song_id}": "found"})
+            liked = yt_music_like_wrapper(song_from_yt_music.ytmusic_song_id)
+            await websocket.send_json({f"{song.song_id}": "liked"})
+
+
+@app.post("/youtube-music/sync")
+async def search_youtube_music(
+    payload: List[YTMusicSearchPayload],
+    mock: Optional[bool] = False,
+) -> Response:
+    """
+    Search given `SpotifySong` objects on YouTube based
+    on their name + artist combination
+    """
     if mock:
         return MOCK_YTMUSIC_SEARCH_RESULT
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_results = [executor.submit(yt_music_search_wrapper, song.song_id, song.name, song.artist) for song in payload]
-        results = [future.result() for future in future_results]
-        return results
+
+    for song in payload:
+        try:
+            queue.put(song)
+        except Exception as e:
+            logger.error(e)
+            continue
+
+    return Response("success")

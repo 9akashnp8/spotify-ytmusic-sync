@@ -59,17 +59,34 @@ class SpotifyService():
             """)
 
 
-def yt_music_search_wrapper(spotify_song_id: str, song_name: str, artist: str) -> YTMusicSearchResult:
+def yt_music_search_wrapper(spotify_song_id: str, song_name: str, artist: str):
     search_result = ytmusic.search(f"{song_name} - {artist}", "songs")
-    song_id = search_result[0]["videoId"]
-    name = search_result[0]["title"]
-    artists = ",".join([artist["name"] for artist in search_result[0]["artists"]])
-    return YTMusicSearchResult(
-        source_song_id=spotify_song_id,
-        ytmusic_song_id=song_id,
-        name=name,
-        artist=artists,
-    )
+    try:
+        song_id = search_result[0]["videoId"]
+        name = search_result[0]["title"]
+        artists = ",".join([artist["name"] for artist in search_result[0]["artists"]])
+    except (IndexError, KeyError) as _:
+        return None
+    else:
+        return YTMusicSearchResult(
+            source_song_id=spotify_song_id,
+            ytmusic_song_id=song_id,
+            name=name,
+            artist=artists,
+        )
+
+
+def yt_music_like_wrapper(song_id: str):
+    result = ytmusic.rate_song(song_id, "LIKE")
+    print(f"Like result: {result}")
+
+
+async def get_collection(collection_name: str):
+    """
+    Simple wrapper over pymongo's get_collection
+    """
+    collection = db.get_collection(collection_name)
+    return collection
 
 
 async def get_or_create_collection(collection_name: str):

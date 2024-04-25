@@ -19,6 +19,12 @@ class SpotifyPlaylistCollection(BaseModel):
     songs: List[SpotifySong]
 
 
+class YTMusicSearchPayload(BaseModel):
+    song_id: str
+    name: str
+    artist: str
+
+
 class YTMusicSearchResult(BaseModel):
     source_song_id: str
     ytmusic_song_id: str
