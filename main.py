@@ -69,35 +69,21 @@ async def get_spotify_playlist_songs(
     return SpotifyPlaylistCollection(songs=documents)
 
 
-@app.websocket("/sync")
-async def spotify_yt_music_sync(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        song: YTMusicSearchPayload = queue.get()
-        if song:
-            song_from_yt_music = yt_music_search_wrapper(song.song_id, song.name, song.artist)
-            await websocket.send_json({f"{song.song_id}": "found"})
-            liked = yt_music_like_wrapper(song_from_yt_music.ytmusic_song_id)
-            await websocket.send_json({f"{song.song_id}": "liked"})
-
-
 @app.post("/youtube-music/sync")
 async def search_youtube_music(
     payload: List[YTMusicSearchPayload],
-    mock: Optional[bool] = False,
+    backgroud_task: BackgroundTasks 
 ) -> Response:
     """
-    Search given `SpotifySong` objects on YouTube based
-    on their name + artist combination
+    Core sync endpoint that takes list of spotify
+    songs and likes the same in users YTMusic account.
+
+    The sync is run in the background, with live status
+    pushed as SSE.
     """
-    if mock:
-        return MOCK_YTMUSIC_SEARCH_RESULT
+    backgroud_task.add_task(sync_ytmusic_spotify, payload)
 
-    for song in payload:
-        try:
-            queue.put(song)
-        except Exception as e:
-            logger.error(e)
-            continue
-
-    return Response("success")
+    return JSONResponse(content={
+        "status": "success",
+        "message": "Task queued, Please wait as we sync songs"
+    })

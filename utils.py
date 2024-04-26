@@ -1,3 +1,9 @@
+from typing import List
+
+from logger import logger
+from models import YTMusicSearchPayload
+from services import yt_music_like_wrapper, yt_music_search_wrapper
+
 MOCK_SPOTIFY_PLAYLIST_SONGS = [
     {
         "song_id": "4a49PDoDgb7IiQtoxjuUXK",
@@ -234,3 +240,30 @@ MOCK_YTMUSIC_SEARCH_RESULT = [
         "artist": "Stevie Nicks"
     }
 ]
+
+
+def sync_ytmusic_spotify(song: YTMusicSearchPayload):
+    """
+    Search YTMusic for given <song name> - <artist> combo
+    """
+    logger.info("search_and_like Triggered")
+    yt_music_song = yt_music_search_wrapper(song.song_id, song.name, song.artist)
+    if yt_music_song:
+        yt_music_like_wrapper(yt_music_song.ytmusic_song_id)
+        logger.info(f"Found and liked: {song.name} by {song.artist}")
+    else:
+        logger.error(f"Song {song.name} not found on YTMusic")
+
+
+def sync_ytmusic_spotify(songs: List[YTMusicSearchPayload]):
+    """
+    Main function used as background task that syncs Spotify
+    songs to YTMusics
+
+    Iterates over `YTMusicSearchPayload` objects to search and
+    like given songs
+    """
+    logger.info("Sync Started")
+    for song in songs:
+        sync_ytmusic_spotify(song)
+    logger.info("Sync Complete")
