@@ -1,26 +1,23 @@
-import logging
 from typing import List
 from fastapi import FastAPI
-from fastapi.responses import Response
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Cookie
 from typing import Optional
-from queue import Queue
-from fastapi.websockets import WebSocket
+from fastapi.background import BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response, JSONResponse
 
 from models import SpotifyPlaylistCollection, YTMusicSearchPayload
 from services import (
     SpotifyService,
-    yt_music_search_wrapper,
     get_or_create_collection,
     get_docs_from_collection,
-    yt_music_like_wrapper,
 )
-from utils import MOCK_SPOTIFY_PLAYLIST_SONGS, MOCK_YTMUSIC_SEARCH_RESULT
+from utils import (
+    MOCK_SPOTIFY_PLAYLIST_SONGS,
+    sync_ytmusic_spotify
+)
 
-logger = logging.getLogger(__name__)
 spotify_service = SpotifyService()
-queue = Queue()
 
 app = FastAPI()
 app.add_middleware(
