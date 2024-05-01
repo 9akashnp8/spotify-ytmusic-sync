@@ -77,8 +77,7 @@ def yt_music_search_wrapper(spotify_song_id: str, song_name: str, artist: str):
 
 
 def yt_music_like_wrapper(song_id: str):
-    result = ytmusic.rate_song(song_id, "LIKE")
-    print(f"Like result: {result}")
+    ytmusic.rate_song(song_id, "LIKE")
 
 
 async def get_collection(collection_name: str):

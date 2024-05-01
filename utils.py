@@ -1,3 +1,5 @@
+import json
+import redis
 from typing import List
 
 from logger import logger
@@ -242,7 +244,7 @@ MOCK_YTMUSIC_SEARCH_RESULT = [
 ]
 
 
-def sync_ytmusic_spotify(song: YTMusicSearchPayload):
+def search_and_like_ytmusic(song: YTMusicSearchPayload):
     """
     Search YTMusic for given <song name> - <artist> combo
     """
@@ -251,6 +253,8 @@ def sync_ytmusic_spotify(song: YTMusicSearchPayload):
     if yt_music_song:
         yt_music_like_wrapper(yt_music_song.ytmusic_song_id)
         logger.info(f"Found and liked: {song.name} by {song.artist}")
+        data = {song.song_id: { "found": True, "liked": True}}
+        r_queue.lpush("song_status", json.dumps(data))
     else:
         logger.error(f"Song {song.name} not found on YTMusic")
 
@@ -265,5 +269,8 @@ def sync_ytmusic_spotify(songs: List[YTMusicSearchPayload]):
     """
     logger.info("Sync Started")
     for song in songs:
-        sync_ytmusic_spotify(song)
+        search_and_like_ytmusic(song)
     logger.info("Sync Complete")
+
+
+r_queue = redis.Redis()
