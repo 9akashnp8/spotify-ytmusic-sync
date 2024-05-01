@@ -1,11 +1,11 @@
 
 type Props = {
     name: string;
-    found: boolean,
-    liked: boolean,
+    found?: boolean,
+    liked?: boolean,
 }
 
-export default function SpotifySong({ name, found, liked }: Props) {
+export default function SpotifySong({ name, found = false, liked = false }: Props) {
     return (
         <div
             style={{
